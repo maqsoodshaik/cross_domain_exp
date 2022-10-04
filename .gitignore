@@ -1,2 +1,7 @@
 *.bin
 *.json
+__init__*
+version.txt
+*blobs*
+*.lock
+*.pyc
