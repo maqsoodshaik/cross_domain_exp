@@ -19,7 +19,7 @@ Depending on the model and the GPU you are using, you might need to adjust the b
 """
 dataset_name = "fleurs"
 model_checkpoint = "facebook/wav2vec2-base"
-batch_size = 32
+batch_size = 16
 
 """Before we start, let's install both `datasets` and `transformers` from master. Also, we need the `librosa` package to load audio files."""
 
@@ -61,7 +61,7 @@ We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library
 
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['fr_fr','de_de','pl','nl_nl']
+configs = ['fr_fr','de_de','nl_nl']
 list_datasets_train = []
 list_datasets_validation = []
 for i in configs:   
@@ -91,7 +91,7 @@ metric = load_metric("accuracy")
 
 """Let's create an `id2label` dictionary to decode them back to strings and see what they are. The inverse `label2id` will be useful too, when we load the model later."""
 
-labels = configs
+labels = ["French","German","Dutch"]
 label2id, id2label,label2id_int = dict(), dict(),dict()
 for i, label in enumerate(labels):
     label2id[label] = str(i)
@@ -143,7 +143,7 @@ feature_extractor
 
 """As we've noticed earlier, the samples are roughly 1 second long, so let's set it here:"""
 
-max_duration = 10.0  # seconds
+max_duration = 5.0  # seconds
 
 """We can then write the function that will preprocess our samples. We just feed them to the `feature_extractor` with the argument `truncation=True`, as well as the maximum sample length. This will ensure that very long inputs like the ones in the `_silence_` class can be safely batched."""
 
@@ -155,7 +155,7 @@ def preprocess_function(examples):
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
     )
-    inputs["labels"] = [label2id_int[image] for image in examples["langauge"]]
+    inputs["labels"] = [label2id_int[image] for image in examples["language"]]
     return inputs
 
 """The feature extractor will return a list of numpy arays for each example:"""
