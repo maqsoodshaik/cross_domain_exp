@@ -17,7 +17,7 @@ This notebook is built to run on the **Keyword Spotting** subset of the [SUPERB 
 
 Depending on the model and the GPU you are using, you might need to adjust the batch size to avoid out-of-memory errors. Set those two parameters, then the rest of the notebook should run smoothly:
 """
-
+dataset_name = "fleurs"
 model_checkpoint = "facebook/wav2vec2-base"
 batch_size = 32
 
@@ -61,12 +61,12 @@ We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library
 
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['uk','ab','pl','ru']
+configs = ['fr_fr','de_de','pl','nl_nl']
 list_datasets_train = []
 list_datasets_validation = []
 for i in configs:   
-    dataset_train = load_dataset("common_voice",i,split = "train")
-    dataset_validation = load_dataset("common_voice",i,split = "validation")
+    dataset_train = load_dataset("google/fleurs",i,split = "train")
+    dataset_validation = load_dataset("google/fleurs",i,split = "validation")
     list_datasets_train.append(dataset_train)
     list_datasets_validation.append(dataset_validation)
 dataset_train = concatenate_datasets(
@@ -143,7 +143,7 @@ feature_extractor
 
 """As we've noticed earlier, the samples are roughly 1 second long, so let's set it here:"""
 
-max_duration = 3.0  # seconds
+max_duration = 10.0  # seconds
 
 """We can then write the function that will preprocess our samples. We just feed them to the `feature_extractor` with the argument `truncation=True`, as well as the maximum sample length. This will ensure that very long inputs like the ones in the `_silence_` class can be safely batched."""
 
@@ -155,7 +155,7 @@ def preprocess_function(examples):
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
     )
-    inputs["labels"] = [label2id_int[image] for image in examples["locale"]]
+    inputs["labels"] = [label2id_int[image] for image in examples["langauge"]]
     return inputs
 
 """The feature extractor will return a list of numpy arays for each example:"""
@@ -164,8 +164,8 @@ def preprocess_function(examples):
 
 """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
 
-encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
-encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
+encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=["id","num_samples", "path", "audio", "transcription", "raw_transcription", "gender", "lang_id", "language", "lang_group_id"], batched=True)
+encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=["id","num_samples", "path", "audio", "transcription", "raw_transcription", "gender", "lang_id", "language", "lang_group_id"], batched=True)
 
 # def transforms(examples):
 #     examples["label"] = [label2id_int[image] for image in examples["locale"]]
@@ -196,7 +196,7 @@ model = AutoModelForAudioClassification.from_pretrained(
 To instantiate a `Trainer`, we will need to define the training configuration and the evaluation metric. The most important is the [`TrainingArguments`](https://huggingface.co/transformers/main_classes/trainer.html#transformers.TrainingArguments), which is a class that contains all the attributes to customize the training. It requires one folder name, which will be used to save the checkpoints of the model, and all other arguments are optional:
 """
 model_name_extension = "".join(configs)
-model_name = model_checkpoint.split("/")[-1]+model_name_extension
+model_name = model_checkpoint.split("/")[-1]+model_name_extension+dataset_name
 
 args = TrainingArguments(
     f"/pretrained/{model_name}",#{model_name}arnlpt
@@ -261,9 +261,9 @@ print(trainer.train())
 print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-trainer.save_model( f"/pretrained/{model_name}_bestmodel")
+trainer.save_model( f"/pretrained/{model_name}_{dataset_name)_bestmodel")
 best_model = AutoModelForAudioClassification.from_pretrained(
-    f"/pretrained/{model_name}_bestmodel"
+    f"/pretrained/{model_name}_{dataset_name}_bestmodel"
 )
 trainer = Trainer(
     best_model,
