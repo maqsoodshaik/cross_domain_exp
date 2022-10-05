@@ -10,6 +10,6 @@ nvidia-smi
 # DIR=$(cd $(dirname $0); pwd)
 #--bind /data/corpora:/corpora
 #--bind /data/users/maqsood/hf_cache:/cache
-export HF_DATASETS_DOWNLOADED_DATASETS_PATH='/corpora/common_voice_speech/'
+export HF_DATASETS_DOWNLOADED_DATASETS_PATH='/corpora/multilingual_librispeech/'
 export HF_DATASETS_CACHE='/cache'
 python -u ~/thesis/cross_domain_exp/LID_pretrained.py 
