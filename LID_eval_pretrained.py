@@ -1,12 +1,15 @@
-
+from turtle import color
+import torch
 model_checkpoint = "facebook/wav2vec2-base"
 batch_size = 32
 from os import rename
-from datasets import load_dataset, load_metric,concatenate_datasets
+from datasets import load_dataset, load_metric,concatenate_datasets,Dataset
+
 configs = ['uk','ab','pl','ru']
 list_datasets_validation = []
 for i in configs:   
     dataset_validation = load_dataset("common_voice",i,split = "validation")
+    dataset_validation = Dataset.from_dict(dataset_validation[:20])
     list_datasets_validation.append(dataset_validation)
 dataset_validation = concatenate_datasets(
         list_datasets_validation
@@ -42,7 +45,7 @@ model_name_extension = "".join(configs)
 model_name = model_checkpoint.split("/")[-1]+model_name_extension
 
 args = TrainingArguments(
-    f"/pretrained/{model_name}",#{model_name}arnlpt
+    f"{model_name}",#{model_name}arnlpt
     evaluation_strategy = "epoch",
     save_strategy = "epoch",
     learning_rate=1e-5,
@@ -53,7 +56,7 @@ args = TrainingArguments(
     warmup_ratio=0.1,
     logging_steps=10,
     load_best_model_at_end=True,
-    metric_for_best_model="accuracy",
+    metric_for_best_model="accuracy"
 )
 import numpy as np
 
@@ -64,13 +67,45 @@ def compute_metrics(eval_pred):
 
 
 best_model = AutoModelForAudioClassification.from_pretrained(
-    f"/pretrained/{model_name}_bestmodel"
+    f"wav2vec2-baseukabplru_bestmodel"
 )
+
 trainer = Trainer(
     best_model,
     args,
-    eval_dataset=encoded_dataset_validation,
     tokenizer=feature_extractor,
     compute_metrics=compute_metrics
 )
-print(f"after loading model:{trainer.evaluate()}")
+
+# print(f"after loading model:{trainer.evaluate()}")
+pred= trainer.predict(encoded_dataset_validation)
+print(pred)
+inp = encoded_dataset_validation["input_values"]
+labels_p = encoded_dataset_validation["label"]
+best_model = best_model.wav2vec2
+pred = best_model(torch.tensor(inp))
+pred = pred.last_hidden_state.reshape(pred.last_hidden_state.shape[0],-1)
+pred = pred.detach().numpy()
+from sklearn.decomposition import PCA
+pca = PCA(n_components=2)
+pred =pca.fit_transform(pred)
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+fig, ax = plt.subplots()
+ 
+# Plot scaled features
+xdata = pred[:,0]
+ydata = pred[:,1]
+ 
+# Plot 3D plot
+ax.scatter(xdata, ydata,c=labels_p)
+ 
+# Plot title of graph
+plt.title(f'PCA')
+ax.legend()
+plt.show()
+
+print("end")
