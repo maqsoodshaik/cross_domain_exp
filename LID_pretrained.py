@@ -61,31 +61,19 @@ We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library
 
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-
-dataset_ar = load_dataset("common_voice","ar",split = "train")
-dataset_nl = load_dataset("common_voice", "nl",split = "train")
-dataset_pt = load_dataset("common_voice", "pt",split = "train")
-# new_column = [0] * len(dataset_ar)
-# dataset_ar =dataset_ar.add_column("label", new_column)
-# new_column = [1] * len(dataset_nl)
-# dataset_nl =dataset_nl.add_column("label", new_column)
-# new_column = [2] * len(dataset_pt)
-# dataset_pt =dataset_pt.add_column("label", new_column)
-dataset_ar_v = load_dataset("common_voice","ar",split = "validation")
-dataset_nl_v = load_dataset("common_voice", "nl",split = "validation")
-dataset_pt_v = load_dataset("common_voice", "pt",split = "validation")
-# new_column = [0] * len(dataset_ar_v)
-# dataset_ar_v =dataset_ar_v.add_column("label", new_column)
-# new_column = [1] * len(dataset_nl_v)
-# dataset_nl_v =dataset_nl_v.add_column("label", new_column)
-# new_column = [2] * len(dataset_pt_v)
-# dataset_pt_v =dataset_pt_v.add_column("label", new_column)
-# breakpoint()
+configs = ['uk','ab','pl','ru']
+list_datasets_train = []
+list_datasets_validation = []
+for i in configs:   
+    dataset_train = load_dataset("common_voice",i,split = "train")
+    dataset_validation = load_dataset("common_voice",i,split = "validation")
+    list_datasets_train.append(dataset_train)
+    list_datasets_validation.append(dataset_validation)
 dataset_train = concatenate_datasets(
-        [dataset_ar,dataset_nl,dataset_pt]
+        list_datasets_train
     )
 dataset_validation = concatenate_datasets(
-        [dataset_ar_v,dataset_nl_v,dataset_pt_v]
+        list_datasets_validation
     )
 metric = load_metric("accuracy")
 
@@ -103,7 +91,7 @@ metric = load_metric("accuracy")
 
 """Let's create an `id2label` dictionary to decode them back to strings and see what they are. The inverse `label2id` will be useful too, when we load the model later."""
 
-labels = ['ar','nl','pt']
+labels = configs
 label2id, id2label,label2id_int = dict(), dict(),dict()
 for i, label in enumerate(labels):
     label2id[label] = str(i)
@@ -167,7 +155,7 @@ def preprocess_function(examples):
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
     )
-    inputs["label"] = [label2id_int[image] for image in examples["locale"]]
+    inputs["labels"] = [label2id_int[image] for image in examples["locale"]]
     return inputs
 
 """The feature extractor will return a list of numpy arays for each example:"""
@@ -207,24 +195,24 @@ model = AutoModelForAudioClassification.from_pretrained(
 
 To instantiate a `Trainer`, we will need to define the training configuration and the evaluation metric. The most important is the [`TrainingArguments`](https://huggingface.co/transformers/main_classes/trainer.html#transformers.TrainingArguments), which is a class that contains all the attributes to customize the training. It requires one folder name, which will be used to save the checkpoints of the model, and all other arguments are optional:
 """
-
-model_name = model_checkpoint.split("/")[-1]
+model_name_extension = "".join(configs)
+model_name = model_checkpoint.split("/")[-1]+model_name_extension
 
 args = TrainingArguments(
-    f"/pretrained/{model_name}arnlpt",#{model_name}arnlpt
+    f"/pretrained/{model_name}",#{model_name}arnlpt
     evaluation_strategy = "epoch",
     save_strategy = "epoch",
-    learning_rate=1e-5,
+    learning_rate=3e-5,
     per_device_train_batch_size=batch_size,
     gradient_accumulation_steps=4,
     per_device_eval_batch_size=batch_size,
-    num_train_epochs=20,
+    num_train_epochs=5,
     warmup_ratio=0.1,
     logging_steps=10,
     load_best_model_at_end=True,
     metric_for_best_model="accuracy",
 )
-print(f"hell:{args.no_cuda}")
+# print(f"hell:{args.no_cuda}")
 """Here we set the evaluation to be done at the end of each epoch, tweak the learning rate, use the `batch_size` defined at the top of the notebook and customize the number of epochs for training, as well as the weight decay. Since the best model might not be the one at the end of training, we ask the `Trainer` to load the best model it saved (according to `metric_name`) at the end of training.
 
 The last argument `push_to_hub` allows the Trainer to push the model to the [Hub](https://huggingface.co/models) regularly during training. Remove it if you didn't follow the installation steps at the top of the notebook. If you want to save your model locally with a name that is different from the name of the repository, or if you want to push your model under an organization and not your name space, use the `hub_model_id` argument to set the repo name (it needs to be the full name, including your namespace: for instance `"anton-l/wav2vec2-finetuned-ks"` or `"huggingface/anton-l/wav2vec2-finetuned-ks"`).
@@ -266,14 +254,25 @@ trainer = Trainer(
 Now we can finetune our model by calling the `train` method:
 """
 
-trainer.train()
+print(trainer.train())
 
 """We can check with the `evaluate` method that our `Trainer` did reload the best model properly (if it was not the last one):"""
 
-trainer.evaluate()
+print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-
+trainer.save_model( f"/pretrained/{model_name}_bestmodel")
+best_model = AutoModelForAudioClassification.from_pretrained(
+    f"/pretrained/{model_name}_bestmodel"
+)
+trainer = Trainer(
+    best_model,
+    args,
+    eval_dataset=encoded_dataset_validation,
+    tokenizer=feature_extractor,
+    compute_metrics=compute_metrics
+)
+print(f"after loading model:{trainer.evaluate()}")
 # trainer.push_to_hub()
 
 """You can now share this model with all your friends, family, favorite pets: they can all load it with the identifier `"your-username/the-name-you-picked"` so for instance:

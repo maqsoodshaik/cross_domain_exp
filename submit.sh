@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # specify which GPU to work on ...
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=2
 
 nvidia-smi
 # obtain the directory the bash script is stored in

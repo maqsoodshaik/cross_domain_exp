@@ -59,21 +59,21 @@ Keyword Spotting (KS) detects preregistered keywords by classifying utterances i
 We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library to download the data and get the Accuracy metric we need to use for evaluation. This can be easily done with the functions `load_dataset` and `load_metric`.
 """
 
-
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-
-dataset_ar = load_dataset("common_voice","ar",split = "train")
-dataset_nl = load_dataset("common_voice", "nl",split = "train")
-dataset_pt = load_dataset("common_voice", "pt",split = "train")
-dataset_ar_v = load_dataset("common_voice","ar",split = "validation")
-dataset_nl_v = load_dataset("common_voice", "nl",split = "validation")
-dataset_pt_v = load_dataset("common_voice", "pt",split = "validation")
+configs = ['uk','ab','pl','ru']
+list_datasets_train = []
+list_datasets_validation = []
+for i in configs:   
+    dataset_train = load_dataset("common_voice",i,split = "train")
+    dataset_validation = load_dataset("common_voice",i,split = "validation")
+    list_datasets_train.append(dataset_train)
+    list_datasets_validation.append(dataset_validation)
 dataset_train = concatenate_datasets(
-        [dataset_ar,dataset_nl,dataset_pt]
+        list_datasets_train
     )
 dataset_validation = concatenate_datasets(
-        [dataset_ar_v,dataset_nl_v,dataset_pt_v]
+        list_datasets_validation
     )
 metric = load_metric("accuracy")
 
@@ -91,13 +91,12 @@ metric = load_metric("accuracy")
 
 """Let's create an `id2label` dictionary to decode them back to strings and see what they are. The inverse `label2id` will be useful too, when we load the model later."""
 
-labels = ['ar','nl','pt']
+labels = configs
 label2id, id2label,label2id_int = dict(), dict(),dict()
 for i, label in enumerate(labels):
     label2id[label] = str(i)
     id2label[str(i)] = label
     label2id_int[label] = i
-
 """`Wav2Vec2` expects the input in the format of a 1-dimensional array of 16 kHz. This means that the audio file has to be loaded and resampled.
 
  Thankfully, `datasets` does this automatically when calling the column `audio`. Let try it out. 
@@ -163,7 +162,7 @@ def preprocess_function(examples):
 
 # preprocess_function(dataset[:5])
 
-# """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
+"""To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
 
 encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
 encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
@@ -199,11 +198,11 @@ w_o_pretrain_model = Wav2Vec2ForSequenceClassification(cnf)
 
 To instantiate a `Trainer`, we will need to define the training configuration and the evaluation metric. The most important is the [`TrainingArguments`](https://huggingface.co/transformers/main_classes/trainer.html#transformers.TrainingArguments), which is a class that contains all the attributes to customize the training. It requires one folder name, which will be used to save the checkpoints of the model, and all other arguments are optional:
 """
-
-model_name = model_checkpoint.split("/")[-1]
+model_name_extension = "".join(configs)
+model_name = model_checkpoint.split("/")[-1]+model_name_extension
 
 args = TrainingArguments(
-    f"/wop/{model_name}arnlpt",#{model_name}arnlpt
+    f"/wop/{model_name}",#{model_name}arnlpt
     evaluation_strategy = "epoch",
     save_strategy = "epoch",
     learning_rate=1e-5,
@@ -254,11 +253,11 @@ trainer = Trainer(
 Now we can finetune our model by calling the `train` method:
 """
 
-trainer.train()
+print(trainer.train())
 
 """We can check with the `evaluate` method that our `Trainer` did reload the best model properly (if it was not the last one):"""
 
-trainer.evaluate()
+print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
 
