@@ -261,7 +261,7 @@ print(trainer.train())
 print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-trainer.save_model( f"/pretrained/{model_name}_{dataset_name)_bestmodel")
+trainer.save_model( f"/pretrained/{model_name}_{dataset_name}_bestmodel")
 best_model = AutoModelForAudioClassification.from_pretrained(
     f"/pretrained/{model_name}_{dataset_name}_bestmodel"
 )
