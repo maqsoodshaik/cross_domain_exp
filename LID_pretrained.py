@@ -67,6 +67,7 @@ def preprocess_function(examples):
         sampling_rate=feature_extractor.sampling_rate, 
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
+        padding=True
     )
     return inputs
 
