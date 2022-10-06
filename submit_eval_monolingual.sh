@@ -12,4 +12,4 @@ nvidia-smi
 #--bind /data/users/maqsood/hf_cache:/cache
 export HF_DATASETS_DOWNLOADED_DATASETS_PATH='/corpora/multilingual_librispeech/'
 export HF_DATASETS_CACHE='/cache'
-python -u ~/thesis/cross_domain_exp/LID_eval_monolingual.py 
+python -u ~/thesis/cross_domain_exp/LID_eval.py 

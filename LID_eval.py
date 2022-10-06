@@ -1,6 +1,6 @@
 import torch
 model_checkpoint = "/pretrained/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
-batch_size = 8
+batch_size = 16
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets,Dataset
 metric = load_metric("accuracy")
@@ -39,7 +39,6 @@ def preprocess_function_o(examples):
     )
     return inputs
 encoded_dataset_validation_o = dataset_validation_o.map(preprocess_function_o, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
-
 from transformers import AutoModelForAudioClassification, TrainingArguments, Trainer
 
 
@@ -52,7 +51,7 @@ def compute_metrics(eval_pred):
     return metric.compute(predictions=predictions, references=eval_pred.label_ids)
 
 import torch
-device = torch.device("cpu" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 best_model = AutoModelForAudioClassification.from_pretrained(
     model_checkpoint
@@ -104,7 +103,7 @@ dataset_name = "fleurs"
 configs = ['fr_fr','de_de','nl_nl']
 list_datasets_validation = []
 for i in configs:   
-    dataset_validation = load_dataset("google/fleurs",i,split = "validation")
+    dataset_validation = load_dataset("google/fleurs",i,split = "train")
     dataset_validation = Dataset.from_dict(dataset_validation[:20])
     list_datasets_validation.append(dataset_validation)
 dataset_validation = concatenate_datasets(
@@ -125,28 +124,47 @@ def preprocess_function_f(examples):
 encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remove_columns=["id","num_samples", "path", "audio", "transcription", "raw_transcription", "gender", "lang_id", "language", "lang_group_id"], batched=True)
 # pred= trainer.predict(encoded_dataset_validation)
 # print(f"fleaurs_accuracy:{pred}")
-inp_f = torch.tensor(encoded_dataset_validation["input_values"][::2]).to(device)
+# inp_f = torch.tensor(encoded_dataset_validation["input_values"][::2]).to(device)
 
-labels_p_f = torch.tensor(encoded_dataset_validation["labels"][::2]).to(device)
-out_domain = torch.tensor([10]*len(labels_p_f))
-inp = torch.tensor(encoded_dataset_validation_o["input_values"][::2]).to(device) 
-labels_p = torch.tensor(encoded_dataset_validation_o["labels"][::2]).to(device)
-in_domain =  torch.tensor([1]*len(labels_p))
+# labels_p_f = torch.tensor(encoded_dataset_validation["labels"][::2]).to(device)
+# out_domain = torch.tensor([10]*len(labels_p_f))
+# inp = torch.tensor(encoded_dataset_validation_o["input_values"][::2]).to(device) 
+# labels_p = torch.tensor(encoded_dataset_validation_o["labels"][::2]).to(device)
+# in_domain =  torch.tensor([1]*len(labels_p))
 
-inp = torch.cat((inp, inp_f), 0)
-labels_p = torch.cat((labels_p, labels_p_f), 0)
-domain =  torch.cat((in_domain, out_domain), 0)
-
-
-
-pred = best_model.to(device).wav2vec2(inp)
-
-pred = pred.last_hidden_state.reshape(pred.last_hidden_state.shape[0],-1)
+# inp = torch.cat((inp, inp_f), 0)
+# labels_p = torch.cat((labels_p, labels_p_f), 0)
+# domain =  torch.cat((in_domain, out_domain), 0)
 
 
 
+# pred = best_model.to(device).wav2vec2(inp)
 
+# pred = pred.last_hidden_state.reshape(pred.last_hidden_state.shape[0],-1)
+encoded_dataset_validation_o=encoded_dataset_validation_o.add_column("domain",[1]*len(encoded_dataset_validation_o))
+encoded_dataset_validation = encoded_dataset_validation.add_column("domain",[10]*len(encoded_dataset_validation))
 
+dataset_validation_combined= concatenate_datasets(
+        [encoded_dataset_validation,encoded_dataset_validation_o]
+    )
+best_model= best_model.wav2vec2
+from torch.utils.data import DataLoader
+dataset_validation_combined.set_format("torch")
+eval_dataloader = DataLoader(dataset_validation_combined, batch_size=16)
+pred = torch.tensor([])
+labels_p= torch.tensor([])
+domain= torch.tensor([])
+best_model.eval()
+for batch in eval_dataloader:
+    batch = {k: v.to(device) for k, v in batch.items()}
+    with torch.no_grad():
+        outputs = best_model(batch["input_values"])
+        pred_s = outputs.last_hidden_state.reshape(outputs.last_hidden_state.shape[0],-1).to("cpu")
+        pred = torch.cat((pred,pred_s),0)
+        labels_s = batch["labels"].to("cpu")
+        labels_p = torch.cat((labels_p,labels_s),0)
+        domain_s =  batch["domain"].to("cpu")
+        domain = torch.cat((domain,domain_s),0)
 pred = pred.detach().numpy()
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
@@ -167,7 +185,7 @@ xdata = pred[:,0]
 ydata = pred[:,1]
  
 # Plot 3D plot
-scatter =ax.scatter(xdata, ydata,s=domain,c=labels_p)
+scatter =ax.scatter(xdata, ydata,s=np.array(domain),c=labels_p)
  
 # Plot title of graph
 plt.title(f'PCA of original')
