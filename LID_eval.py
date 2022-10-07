@@ -1,5 +1,5 @@
 import torch
-model_checkpoint = "/pretrained/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
+model_checkpoint = "/pretrained/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"#"/wop/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
 batch_size = 16
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets,Dataset
@@ -88,8 +88,8 @@ trainer = Trainer(
 # from scipy.io.wavfile import write
 # write('output_sounddevice.wav', 16000, np.array(batch["input_values"][0]))
 # print(f"after loading model:{trainer.evaluate()}")
-# pred_o= trainer.predict(encoded_dataset_validation_o)
-# print(f"original_accuracy:{pred_o}")
+pred_o= trainer.predict(encoded_dataset_validation_o)
+print(f"original_accuracy:{pred_o}")
 
 
 
@@ -127,8 +127,8 @@ def preprocess_function_f(examples):
     inputs["labels"] = [label2id_int[image] for image in examples["language"]]
     return inputs
 encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remove_columns=["id","num_samples", "path", "audio", "transcription", "raw_transcription", "gender", "lang_id", "language", "lang_group_id"], batched=True)
-# pred= trainer.predict(encoded_dataset_validation)
-# print(f"fleaurs_accuracy:{pred}")
+pred= trainer.predict(encoded_dataset_validation)
+print(f"fleaurs_accuracy:{pred}")
 # inp_f = torch.tensor(encoded_dataset_validation["input_values"][::2]).to(device)
 
 # labels_p_f = torch.tensor(encoded_dataset_validation["labels"][::2]).to(device)
@@ -146,8 +146,8 @@ encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remov
 # pred = best_model.to(device).wav2vec2(inp)
 
 # pred = pred.last_hidden_state.reshape(pred.last_hidden_state.shape[0],-1)
-encoded_dataset_validation_o=encoded_dataset_validation_o.add_column("domain",[1]*len(encoded_dataset_validation_o))
-encoded_dataset_validation = encoded_dataset_validation.add_column("domain",[0]*len(encoded_dataset_validation))
+encoded_dataset_validation_o=encoded_dataset_validation_o.add_column("domain",[0]*len(encoded_dataset_validation_o))
+encoded_dataset_validation = encoded_dataset_validation.add_column("domain",[1]*len(encoded_dataset_validation))
 
 dataset_validation_combined= concatenate_datasets(
         [encoded_dataset_validation,encoded_dataset_validation_o]
@@ -193,14 +193,14 @@ import pandas as  pd
 import seaborn as sns
 plot_frame= pd.DataFrame(list(zip(np.array(xdata.squeeze()),np.array(ydata.squeeze()),np.array([id2label[str(int(i))] for i in labels_p]),np.array([id2domain[str(int(i))]for i in domain]))))
 plot_frame.columns=["TSNE1","TSNE2","Labels","Domain"]
-sns.scatterplot(x ="TSNE1" ,y="TSNE2",hue="Labels",style="Domain",data=plot_frame)
+sns.scatterplot(x ="TSNE1" ,y="TSNE2",hue="Labels",style="Domain",data=plot_frame, alpha=0.6,marker='o')
 # scatter =ax.scatter(xdata, ydata,s=np.array(domain),c=labels_p)
  
 # Plot title of graph
 plt.title(f'TSNE of original')
 # ax.legend(handles=scatter.legend_elements()[0],labels=labels)
 # ax.legend(handles=scatter.legend_elements()[1],labels=["indomain","outof_domain"])
-plt.savefig(f"/plots/{dataset_name_o}.pdf", bbox_inches="tight")
+plt.savefig(f"/plots/{model_checkpoint.split('/')[1]}{dataset_name_o}.pdf", bbox_inches="tight")
 plt.show()
 
 print("end")
