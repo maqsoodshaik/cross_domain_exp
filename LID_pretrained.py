@@ -5,12 +5,49 @@ print(device)
 
 model_checkpoint = "facebook/wav2vec2-base"
 batch_size = 32
+dataset_name = "common_voice"
+"""Before we start, let's install both `datasets` and `transformers` from master. Also, we need the `librosa` package to load audio files."""
 
+# Commented out IPython magic to ensure Python compatibility.
+# %%capture
+# !pip install datasets==1.14
+# !pip install transformers==4.11.3
+# !pip install librosa
+
+"""If you're opening this notebook locally, make sure your environment has an install from the last version of those libraries.
+
+To be able to share your model with the community and generate results like the one shown in the picture below via the inference API, there are a few more steps to follow.
+
+First you have to store your authentication token from the Hugging Face website (sign up [here](https://huggingface.co/join) if you haven't already!) then execute the following cell and input your username and password:
+"""
+
+# from huggingface_hub import notebook_login
+
+# notebook_login()
+
+"""
+Then you need to install Git-LFS to upload your model checkpoints:"""
+
+# Commented out IPython magic to ensure Python compatibility.
+# %%capture
+# !apt install git-lfs
+
+"""## Fine-tuning a model on an audio classification task
+
+In this notebook, we will see how to fine-tune one of the [🤗 Transformers](https://github.com/huggingface/transformers) acoustic models to a Keyword Spotting task of the [SUPERB Benchmark](https://superbbenchmark.org/)
+
+Keyword Spotting (KS) detects preregistered keywords by classifying utterances into a predefined set of words. SUPERB uses the widely used Speech Commands dataset v1.0 for the task. The dataset consists of ten classes of keywords, a class for silence, and an unknown class to include the false positive.
+
+
+### Loading the dataset
+
+We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library to download the data and get the Accuracy metric we need to use for evaluation. This can be easily done with the functions `load_dataset` and `load_metric`.
+"""
 
 dataset_name = "multilingual_librispeech"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['french', 'german', 'dutch']
+configs = ['fr','de','nl']
 list_datasets_train = []
 list_datasets_validation = []
 for val,i in enumerate(configs):   
@@ -67,6 +104,7 @@ def preprocess_function(examples):
         sampling_rate=feature_extractor.sampling_rate, 
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
+        do_normalize=True,
         padding=True
     )
     return inputs
@@ -174,7 +212,7 @@ print(trainer.train())
 print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-trainer.save_model( f"/pretrained/{model_name}_bestmodel")
+trainer.save_model( f"/pretrained/{model_name}_{dataset_name}_bestmodel")
 best_model = AutoModelForAudioClassification.from_pretrained(
     f"/pretrained/{model_name}_bestmodel"
 )
