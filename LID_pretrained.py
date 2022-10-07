@@ -3,7 +3,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 # -*- coding: utf-8 -*-
 
-model_checkpoint = "facebook/wav2vec2-base"
+model_checkpoint = "facebook/wav2vec2-large-xlsr-53"
 batch_size = 32
 dataset_name = "common_voice"
 """Before we start, let's install both `datasets` and `transformers` from master. Also, we need the `librosa` package to load audio files."""
@@ -50,11 +50,9 @@ from datasets import load_dataset, load_metric,concatenate_datasets
 configs = ['fr','de','nl']
 list_datasets_train = []
 list_datasets_validation = []
-for val,i in enumerate(configs):   
-    dataset_train = load_dataset("facebook/multilingual_librispeech",i,split = "train.9h")
-    dataset_train = dataset_train.add_column("labels",[val]*len(dataset_train))
-    dataset_validation = load_dataset("facebook/multilingual_librispeech",i,split = "train.1h")
-    dataset_validation = dataset_validation.add_column("labels",[val]*len(dataset_validation))
+for i in configs:   
+    dataset_train = load_dataset("common_voice",i,split = "train")
+    dataset_validation = load_dataset("common_voice",i,split = "validation")
     list_datasets_train.append(dataset_train)
     list_datasets_validation.append(dataset_validation)
 dataset_train = concatenate_datasets(
@@ -107,6 +105,7 @@ def preprocess_function(examples):
         do_normalize=True,
         padding=True
     )
+    inputs["labels"] = [label2id_int[image] for image in examples["locale"]]
     return inputs
 
 """The feature extractor will return a list of numpy arays for each example:"""
@@ -115,8 +114,8 @@ def preprocess_function(examples):
 
 """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
 
-encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
-encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
+encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
+encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
 
 # def transforms(examples):
 #     examples["label"] = [label2id_int[image] for image in examples["locale"]]
@@ -212,7 +211,7 @@ print(trainer.train())
 print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-trainer.save_model( f"/pretrained/{model_name}_{dataset_name}_bestmodel")
+trainer.save_model( f"/pretrained/{model_name}_bestmodel")
 best_model = AutoModelForAudioClassification.from_pretrained(
     f"/pretrained/{model_name}_bestmodel"
 )
