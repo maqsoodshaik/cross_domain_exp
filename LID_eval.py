@@ -6,10 +6,15 @@ from datasets import load_dataset, load_metric,concatenate_datasets,Dataset
 metric = load_metric("accuracy")
 labels =["French","German","Dutch"]
 label2id, id2label,label2id_int = dict(), dict(),dict()
+
 for i, label in enumerate(labels):
     label2id[label] = str(i)
     id2label[str(i)] = label
     label2id_int[label] = i
+domains = ["in_domain","outof_domain"]
+id2domain = dict()
+for i, label in enumerate(domains):
+    id2domain[str(i)] = label
 from transformers import AutoFeatureExtractor
 
 feature_extractor = AutoFeatureExtractor.from_pretrained(model_checkpoint)
@@ -142,7 +147,7 @@ encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remov
 
 # pred = pred.last_hidden_state.reshape(pred.last_hidden_state.shape[0],-1)
 encoded_dataset_validation_o=encoded_dataset_validation_o.add_column("domain",[1]*len(encoded_dataset_validation_o))
-encoded_dataset_validation = encoded_dataset_validation.add_column("domain",[10]*len(encoded_dataset_validation))
+encoded_dataset_validation = encoded_dataset_validation.add_column("domain",[0]*len(encoded_dataset_validation))
 
 dataset_validation_combined= concatenate_datasets(
         [encoded_dataset_validation,encoded_dataset_validation_o]
@@ -169,10 +174,11 @@ pred = pred.detach().numpy()
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 # pca = PCA(n_components=2)
+# pred =pca.fit_transform(pred)
 pred = TSNE(
         perplexity=6, n_iter=1000, learning_rate=200,random_state = 0
     ).fit_transform(pred)
-# pred =pca.fit_transform(pred)
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -183,13 +189,16 @@ fig, ax = plt.subplots()
 # Plot scaled features
 xdata = pred[:,0]
 ydata = pred[:,1]
- 
-# Plot 3D plot
-scatter =ax.scatter(xdata, ydata,s=np.array(domain),c=labels_p)
+import pandas as  pd
+import seaborn as sns
+plot_frame= pd.DataFrame(list(zip(np.array(xdata.squeeze()),np.array(ydata.squeeze()),np.array([id2label[str(int(i))] for i in labels_p]),np.array([id2domain[str(int(i))]for i in domain]))))
+plot_frame.columns=["TSNE1","TSNE2","Labels","Domain"]
+sns.scatterplot(x ="TSNE1" ,y="TSNE2",hue="Labels",style="Domain",data=plot_frame)
+# scatter =ax.scatter(xdata, ydata,s=np.array(domain),c=labels_p)
  
 # Plot title of graph
-plt.title(f'PCA of original')
-ax.legend(handles=scatter.legend_elements()[0],labels=labels)
+plt.title(f'TSNE of original')
+# ax.legend(handles=scatter.legend_elements()[0],labels=labels)
 # ax.legend(handles=scatter.legend_elements()[1],labels=["indomain","outof_domain"])
 plt.savefig(f"/plots/{dataset_name_o}.pdf", bbox_inches="tight")
 plt.show()
