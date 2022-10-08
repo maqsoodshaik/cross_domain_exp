@@ -4,7 +4,7 @@ print(device)
 # -*- coding: utf-8 -*-
 
 model_checkpoint = "facebook/wav2vec2-base"
-batch_size = 32
+batch_size = 8
 
 
 dataset_name = "multilingual_librispeech"
@@ -67,6 +67,7 @@ def preprocess_function(examples):
         sampling_rate=feature_extractor.sampling_rate, 
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
+        padding=True
     )
     return inputs
 
@@ -117,11 +118,11 @@ args = TrainingArguments(
     f"/wop/{model_name}",#{model_name}arnlpt
     evaluation_strategy = "epoch",
     save_strategy = "epoch",
-    learning_rate=3e-5,
+    learning_rate=5e-5,
     per_device_train_batch_size=batch_size,
     gradient_accumulation_steps=4,
     per_device_eval_batch_size=batch_size,
-    num_train_epochs=5,
+    num_train_epochs=30,
     warmup_ratio=0.1,
     logging_steps=10,
     load_best_model_at_end=True,
@@ -172,9 +173,9 @@ print(trainer.train())
 print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-trainer.save_model( f"/pretrained/{model_name}_bestmodel")
+trainer.save_model( f"/wop/{model_name}_bestmodel")
 best_model = AutoModelForAudioClassification.from_pretrained(
-    f"/pretrained/{model_name}_bestmodel"
+    f"/wop/{model_name}_bestmodel"
 )
 trainer = Trainer(
     best_model,
