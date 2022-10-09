@@ -103,9 +103,16 @@ datasets.config.DOWNLOADED_DATASETS_PATH = Path('/corpora/fleurs/')
 
 ###fleaurs
 
+labels_f =["Russian","Polish","Ukrainian"]
+label2id_f, id2label_f,label2id_int_f = dict(), dict(),dict()
 
+for i, label in enumerate(labels_f):
+    label2id_f[label] = str(i)
+    id2label_f[str(i)] = label
+    label2id_int_f[label] = i
 dataset_name = "fleurs"
-configs = ['fr_fr','de_de','nl_nl']
+# configs = ['fr_fr','de_de','nl_nl']
+configs = ['ru_ru','pl_pl','uk_ua']
 list_datasets_validation = []
 for i in configs:   
     dataset_validation = load_dataset("google/fleurs",i,split = "train")
@@ -124,7 +131,7 @@ def preprocess_function_f(examples):
         truncation=True,
         padding=True 
     )
-    inputs["labels"] = [label2id_int[image] for image in examples["language"]]
+    inputs["labels"] = [label2id_int_f[image] for image in examples["language"]]
     return inputs
 encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remove_columns=["id","num_samples", "path", "audio", "transcription", "raw_transcription", "gender", "lang_id", "language", "lang_group_id"], batched=True)
 pred= trainer.predict(encoded_dataset_validation)
@@ -214,7 +221,14 @@ xdata = pred[:,0]
 ydata = pred[:,1]
 import pandas as  pd
 import seaborn as sns
-plot_frame= pd.DataFrame(list(zip(np.array(xdata.squeeze()),np.array(ydata.squeeze()),np.array([id2label[str(int(i))] for i in labels_p]),np.array([id2domain[str(int(i))]for i in domain]))))
+labels__val = []
+for i,l in enumerate(labels_p):
+    if domain[i]==0:
+        val=id2label[str(int(l))]
+    else:
+        val=id2label_f[str(int(l))]
+    labels__val.append(val)
+plot_frame= pd.DataFrame(list(zip(np.array(xdata.squeeze()),np.array(ydata.squeeze()),np.array(labels__val),np.array([id2domain[str(int(i))]for i in domain]))))
 plot_frame.columns=["TSNE1","TSNE2","Labels","Domain"]
 sns.scatterplot(x ="TSNE1" ,y="TSNE2",hue="Labels",style="Domain",data=plot_frame, alpha=0.6,marker='o')
 # scatter =ax.scatter(xdata, ydata,s=np.array(domain),c=labels_p)
@@ -223,7 +237,7 @@ sns.scatterplot(x ="TSNE1" ,y="TSNE2",hue="Labels",style="Domain",data=plot_fram
 plt.title(f'TSNE of original')
 # ax.legend(handles=scatter.legend_elements()[0],labels=labels)
 # ax.legend(handles=scatter.legend_elements()[1],labels=["indomain","outof_domain"])
-plt.savefig(f"/plots/{model_checkpoint.split('/')[1]}{dataset_name_o}.pdf", bbox_inches="tight")
+plt.savefig(f"/plots/{model_checkpoint.split('/')[1]}_{dataset_name_o}_{''.join(labels)}_{dataset_name}_{''.join(labels_f)}.pdf", bbox_inches="tight")
 plt.show()
 
 print("end")
