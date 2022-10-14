@@ -3,8 +3,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 # -*- coding: utf-8 -*-
 
-model_checkpoint = "facebook/wav2vec2-large-xlsr-53"
-batch_size = 32
+model_checkpoint = "facebook/wav2vec2-base"
+batch_size = 16
 dataset_name = "common_voice"
 """Before we start, let's install both `datasets` and `transformers` from master. Also, we need the `librosa` package to load audio files."""
 
@@ -46,7 +46,7 @@ We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library
 
 dataset_name = "multilingual_librispeech"
 from os import rename
-from datasets import load_dataset, load_metric,concatenate_datasets
+from datasets import load_dataset, load_metric,concatenate_datasets, Audio
 configs = ['fr','de','nl']
 list_datasets_train = []
 list_datasets_validation = []
@@ -113,7 +113,8 @@ def preprocess_function(examples):
 # preprocess_function(dataset[:5])
 
 """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
-
+dataset_train = dataset_train.cast_column("audio", Audio(sampling_rate=16000))
+dataset_validation = dataset_validation.cast_column("audio", Audio(sampling_rate=16000))
 encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
 encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
 
