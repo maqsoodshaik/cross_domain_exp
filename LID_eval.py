@@ -98,25 +98,26 @@ print(f"original_accuracy:{pred_o}")
 import datasets
 
 from pathlib import Path
-datasets.config.DOWNLOADED_DATASETS_PATH = Path('/corpora/fleurs/')
+datasets.config.DOWNLOADED_DATASETS_PATH = Path('/corpora/voxlingua/')
 
 
 ###fleaurs
-
-labels_f =["Russian","Polish","Ukrainian"]
+configs = ['fr','de','nl']
+labels_f =configs
 label2id_f, id2label_f,label2id_int_f = dict(), dict(),dict()
 
 for i, label in enumerate(labels_f):
     label2id_f[label] = str(i)
     id2label_f[str(i)] = label
     label2id_int_f[label] = i
-dataset_name = "fleurs"
-# configs = ['fr_fr','de_de','nl_nl']
-configs = ['ru_ru','pl_pl','uk_ua']
+dataset_name = "voxlingua"
+configs = ['fr','de','nl']
+# configs = ['ru_ru','pl_pl','uk_ua']
 list_datasets_validation = []
-for i in configs:   
-    dataset_validation = load_dataset("google/fleurs",i,split = "train")
+for index,i in enumerate(configs):   
+    dataset_validation = load_dataset("/corpora/voxlingua/",i,split = "train")
     dataset_validation = Dataset.from_dict(dataset_validation[:20])
+    dataset_validation = dataset_validation.add_column("labels",[index]*len(dataset_validation))
     list_datasets_validation.append(dataset_validation)
 dataset_validation = concatenate_datasets(
         list_datasets_validation
@@ -131,9 +132,10 @@ def preprocess_function_f(examples):
         truncation=True,
         padding=True 
     )
-    inputs["labels"] = [label2id_int_f[image] for image in examples["language"]]
+    # inputs["labels"] = [label2id_int_f[image] for image in examples["label"]]
+    # inputs["labels"] = examples["label"]
     return inputs
-encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remove_columns=["id","num_samples", "path", "audio", "transcription", "raw_transcription", "gender", "lang_id", "language", "lang_group_id"], batched=True)
+encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remove_columns=["audio","label"], batched=True)
 pred= trainer.predict(encoded_dataset_validation)
 print(f"fleaurs_accuracy:{pred}")
 # inp_f = torch.tensor(encoded_dataset_validation["input_values"][::2]).to(device)
