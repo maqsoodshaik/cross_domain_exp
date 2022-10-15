@@ -103,7 +103,7 @@ datasets.config.DOWNLOADED_DATASETS_PATH = Path('/corpora/voxlingua/')
 
 ###fleaurs
 configs = ['fr','de','nl']
-labels_f =configs
+labels_f =["French","German","Dutch"]
 label2id_f, id2label_f,label2id_int_f = dict(), dict(),dict()
 
 for i, label in enumerate(labels_f):
@@ -115,7 +115,7 @@ configs = ['fr','de','nl']
 # configs = ['ru_ru','pl_pl','uk_ua']
 list_datasets_validation = []
 for index,i in enumerate(configs):   
-    dataset_validation = load_dataset("/corpora/voxlingua/",i,split = "train")
+    dataset_validation = load_dataset("/corpora/voxlingua/",data_dir=i,split = "train")
     dataset_validation = Dataset.from_dict(dataset_validation[:20])
     dataset_validation = dataset_validation.add_column("labels",[index]*len(dataset_validation))
     list_datasets_validation.append(dataset_validation)
