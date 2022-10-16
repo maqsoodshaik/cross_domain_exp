@@ -4,19 +4,20 @@ print(device)
 # -*- coding: utf-8 -*-
 
 model_checkpoint = "facebook/wav2vec2-base"
-batch_size = 32
+batch_size = 16
+from scipy.io.wavfile import write
 
-
-dataset_name = "multilingual_librispeech"
+dataset_name = "voxlingua"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['french', 'german', 'dutch']
+configs = ['fr','de','nl']
 list_datasets_train = []
 list_datasets_validation = []
 for val,i in enumerate(configs):   
-    dataset_train = load_dataset("facebook/multilingual_librispeech",i,split = "train.9h")
+    dataset_train = load_dataset("/corpora/voxlingua/",data_dir= i,split = "train")
     dataset_train = dataset_train.add_column("labels",[val]*len(dataset_train))
-    dataset_validation = load_dataset("facebook/multilingual_librispeech",i,split = "train.1h")
+    # write('output_voxlingua.wav', 16000, dataset_train[0]["audio"]["array"])
+    dataset_validation = load_dataset("/corpora/voxlingua/",data_dir=i,split = "validation")
     dataset_validation = dataset_validation.add_column("labels",[val]*len(dataset_validation))
     list_datasets_train.append(dataset_train)
     list_datasets_validation.append(dataset_validation)
@@ -59,16 +60,17 @@ feature_extractor
 max_duration = 10.0  # seconds
 
 """We can then write the function that will preprocess our samples. We just feed them to the `feature_extractor` with the argument `truncation=True`, as well as the maximum sample length. This will ensure that very long inputs like the ones in the `_silence_` class can be safely batched."""
-
 def preprocess_function(examples):
     audio_arrays = [x["array"] for x in examples["audio"]]
     inputs = feature_extractor(
         audio_arrays, 
         sampling_rate=feature_extractor.sampling_rate, 
         max_length=int(feature_extractor.sampling_rate * max_duration), 
-        truncation=True, 
-        padding=True
+        truncation=True,
+        padding=True 
     )
+    # inputs["labels"] = [label2id_int_f[image] for image in examples["label"]]
+    # inputs["labels"] = examples["label"]
     return inputs
 
 """The feature extractor will return a list of numpy arays for each example:"""
@@ -77,8 +79,8 @@ def preprocess_function(examples):
 
 """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
 
-encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
-encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
+encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=["audio","label"], batched=True)
+encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=["audio","label"], batched=True)
 
 # def transforms(examples):
 #     examples["label"] = [label2id_int[image] for image in examples["locale"]]
