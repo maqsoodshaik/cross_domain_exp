@@ -1,5 +1,5 @@
 import torch
-model_checkpoint = "/pretrained/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"#"/wop/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
+model_checkpoint = "/pretrained/wav2vec2-basefrdenlvoxlingua_bestmodel"#"/pretrained/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"#"/wop/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
 batch_size = 16
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets,Dataset
@@ -115,7 +115,7 @@ configs = ['fr','de','nl']
 # configs = ['ru_ru','pl_pl','uk_ua']
 list_datasets_validation = []
 for index,i in enumerate(configs):   
-    dataset_validation = load_dataset("/corpora/voxlingua/",data_dir=i,split = "train")
+    dataset_validation = load_dataset("/corpora/voxlingua/",data_dir=i,split = "test")
     dataset_validation = Dataset.from_dict(dataset_validation[:20])
     dataset_validation = dataset_validation.add_column("labels",[index]*len(dataset_validation))
     list_datasets_validation.append(dataset_validation)
