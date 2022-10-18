@@ -6,17 +6,17 @@ print(device)
 model_checkpoint = "facebook/wav2vec2-base"
 batch_size = 8
 
-
-dataset_name = "multilingual_librispeech"
+dataset_name = "voxlingua"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['french', 'german', 'dutch']
+configs = ['fr','de','nl']
 list_datasets_train = []
 list_datasets_validation = []
 for val,i in enumerate(configs):   
-    dataset_train = load_dataset("facebook/multilingual_librispeech",i,split = "train.9h")
+    dataset_train = load_dataset("/corpora/voxlingua/",data_dir= i,split = "train")
     dataset_train = dataset_train.add_column("labels",[val]*len(dataset_train))
-    dataset_validation = load_dataset("facebook/multilingual_librispeech",i,split = "train.1h")
+    # write('output_voxlingua.wav', 16000, dataset_train[0]["audio"]["array"])
+    dataset_validation = load_dataset("/corpora/voxlingua/",data_dir=i,split = "validation")
     dataset_validation = dataset_validation.add_column("labels",[val]*len(dataset_validation))
     list_datasets_train.append(dataset_train)
     list_datasets_validation.append(dataset_validation)
@@ -77,8 +77,8 @@ def preprocess_function(examples):
 
 """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
 
-encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
-encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
+encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=["audio","label"], batched=True)
+encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=["audio","label"], batched=True)
 
 # def transforms(examples):
 #     examples["label"] = [label2id_int[image] for image in examples["locale"]]
