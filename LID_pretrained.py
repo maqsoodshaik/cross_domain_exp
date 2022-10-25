@@ -44,7 +44,7 @@ Keyword Spotting (KS) detects preregistered keywords by classifying utterances i
 We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library to download the data and get the Accuracy metric we need to use for evaluation. This can be easily done with the functions `load_dataset` and `load_metric`.
 """
 
-dataset_name = "multilingual_librispeech"
+dataset_name = "common_voice"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets, Audio
 configs = ['fr','de','nl']
