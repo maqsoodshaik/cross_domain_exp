@@ -4,20 +4,18 @@ print(device)
 # -*- coding: utf-8 -*-
 
 model_checkpoint = "facebook/wav2vec2-base"
-batch_size = 32
+batch_size = 8
 
 
-dataset_name = "multilingual_librispeech"
+dataset_name = "common_voice"
 from os import rename
-from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['french', 'german', 'dutch']
+from datasets import load_dataset, load_metric,concatenate_datasets, Audio
+configs = ['fr','de','nl']
 list_datasets_train = []
 list_datasets_validation = []
-for val,i in enumerate(configs):   
-    dataset_train = load_dataset("facebook/multilingual_librispeech",i,split = "train.9h")
-    dataset_train = dataset_train.add_column("labels",[val]*len(dataset_train))
-    dataset_validation = load_dataset("facebook/multilingual_librispeech",i,split = "train.1h")
-    dataset_validation = dataset_validation.add_column("labels",[val]*len(dataset_validation))
+for i in configs:   
+    dataset_train = load_dataset("common_voice",i,split = "train")
+    dataset_validation = load_dataset("common_voice",i,split = "validation")
     list_datasets_train.append(dataset_train)
     list_datasets_validation.append(dataset_validation)
 dataset_train = concatenate_datasets(
@@ -67,7 +65,10 @@ def preprocess_function(examples):
         sampling_rate=feature_extractor.sampling_rate, 
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
+        do_normalize=True,
+        padding=True
     )
+    inputs["labels"] = [label2id_int[image] for image in examples["locale"]]
     return inputs
 
 """The feature extractor will return a list of numpy arays for each example:"""
@@ -75,9 +76,10 @@ def preprocess_function(examples):
 # preprocess_function(dataset[:5])
 
 """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
-
-encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
-encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['file','audio','text','speaker_id','chapter_id','id'], batched=True)
+dataset_train = dataset_train.cast_column("audio", Audio(sampling_rate=16000))
+dataset_validation = dataset_validation.cast_column("audio", Audio(sampling_rate=16000))
+encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
+encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=['locale','client_id', 'path', 'audio', 'sentence', 'up_votes', 'down_votes', 'age', 'gender', 'accent','segment'], batched=True)
 
 # def transforms(examples):
 #     examples["label"] = [label2id_int[image] for image in examples["locale"]]
@@ -126,6 +128,7 @@ args = TrainingArguments(
     logging_steps=10,
     load_best_model_at_end=True,
     metric_for_best_model="accuracy",
+    fp16 = True
 )
 # print(f"hell:{args.no_cuda}")
 """Here we set the evaluation to be done at the end of each epoch, tweak the learning rate, use the `batch_size` defined at the top of the notebook and customize the number of epochs for training, as well as the weight decay. Since the best model might not be the one at the end of training, we ask the `Trainer` to load the best model it saved (according to `metric_name`) at the end of training.
@@ -172,9 +175,9 @@ print(trainer.train())
 print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-trainer.save_model( f"/pretrained/{model_name}_bestmodel")
+trainer.save_model( f"/wop/{model_name}_bestmodel")
 best_model = AutoModelForAudioClassification.from_pretrained(
-    f"/pretrained/{model_name}_bestmodel"
+    f"/wop/{model_name}_bestmodel"
 )
 trainer = Trainer(
     best_model,
