@@ -10,7 +10,7 @@ batch_size = 8
 dataset_name = "multilingual_librispeech"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['french', 'german', 'dutch']
+configs = ['french', 'german', 'dutch','spanish','italian','portuguese','polish']
 list_datasets_train = []
 list_datasets_validation = []
 for val,i in enumerate(configs):   

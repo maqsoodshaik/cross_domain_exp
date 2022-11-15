@@ -1,7 +1,9 @@
+from pathlib import Path
+import datasets
 dataset_name = "multilingual_librispeech"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['french', 'german', 'dutch']
+configs = ['french', 'german', 'dutch','spanish','italian','portuguese','polish']
 list_datasets_train = []
 list_datasets_validation = []
 for val,i in enumerate(configs):   
@@ -30,7 +32,8 @@ dataset_train = concatenate_datasets(
     )
 print(f"length of {dataset_name} : {len(dataset_train)}")
 dataset_name = "fleurs"
-configs = ['fr_fr','de_de','nl_nl']
+datasets.config.DOWNLOADED_DATASETS_PATH = Path('/corpora/fleurs/')
+configs = ['fr_fr','de_de','nl_nl','es_419','it_it','pt_br','pl_pl']
 list_datasets_train = []
 list_datasets_validation = []
 for i in configs:   
@@ -40,12 +43,11 @@ dataset_train = concatenate_datasets(
         list_datasets_train
     )
 print(f"length of {dataset_name} : {len(dataset_train)}")
-from pathlib import Path
-import datasets
+
 datasets.config.DOWNLOADED_DATASETS_PATH = Path('/corpora/common_voice_speech/')
 dataset_name = "common_voice"
 
-configs = ['fr','de','nl']
+configs = ['fr','de','nl','es','it','pt','pl']
 list_datasets_train = []
 list_datasets_validation = []
 for i in configs:   
