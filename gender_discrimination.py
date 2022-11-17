@@ -4,10 +4,11 @@ from transformers import AutoModelForAudioClassification, TrainingArguments, Tra
 from torch.utils.data import DataLoader
 import torch
 import numpy as np
+import skimage.measure
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 metric = load_metric("accuracy")
-model_checkpoint = "/wop/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
+model_checkpoint = "facebook/wav2vec2-large-xlsr-53"
 batch_size = 16
 feature_extractor = AutoFeatureExtractor.from_pretrained(model_checkpoint)
 max_duration = 10.0  # seconds
@@ -87,7 +88,7 @@ for x in range(13):
 labels_p= torch.tensor([])
 domain= torch.tensor([])
 best_model.eval()
-breakpoint()
+# breakpoint()
 for batch in eval_dataloader:
     batch = {k: v.to(device) for k, v in batch.items()}
     with torch.no_grad():
@@ -95,12 +96,12 @@ for batch in eval_dataloader:
         
         for x in range(13):
             # breakpoint()
-            f[f"hidden_state_s{x}"] = outputs.hidden_states[x].reshape(outputs.hidden_states[x].shape[0],-1)
+            f[f"hidden_state_s{x}"] = outputs.hidden_states[x].to("cpu")
         for x in range(13):
             
             d[f"hidden_state_{x}"] = torch.cat((d[f"hidden_state_{x}"],f[f"hidden_state_s{x}"].to("cpu")),0)
         
-        pred_s = outputs.last_hidden_state.reshape(outputs.last_hidden_state.shape[0],-1).to("cpu")
+        pred_s = outputs.last_hidden_state.to("cpu")
         pred = torch.cat((pred,pred_s),0)
         labels_s = batch["gender"].to("cpu")
         labels_p = torch.cat((labels_p,labels_s),0)
@@ -117,10 +118,10 @@ def train_clf(x_train, x_test,y_train, y_test,accuracies):
     clf = LogisticRegression()
 
 
-    clf.fit(x_train.reshape(x_train.shape[0],-1), y_train)
-    score_test = clf.score(x_test.reshape(x_test.shape[0],-1), y_test)
+    clf.fit(skimage.measure.block_reduce(x_train, (1, x_train.shape[1],1), np.mean).squeeze(), y_train)
+    score_test = clf.score( skimage.measure.block_reduce(x_test, (1, x_test.shape[1],1), np.mean).squeeze(), y_test)
     accuracies.append(score_test)
-    score_train = clf.score(x_train.reshape(x_train.shape[0],-1), y_train)
+    score_train = clf.score( skimage.measure.block_reduce(x_train, (1, x_train.shape[1],1), np.mean).squeeze(), y_train)
     print(f"test_score{score_test}")
     print(f"train{score_train}")
 accuracies = [] 
@@ -134,4 +135,4 @@ plt.plot(accuracies)
 plt.xlabel("layers")
 plt.ylabel("accuracy")
 print("saving plot")
-plt.savefig(f"/plots/gender_accuracies_{model_checkpoint.split('/')[1]}_{model_checkpoint.split('/')[-1]}_{dataset_name}.png")
+plt.savefig(f"/plots/gender_accuracies_{model_checkpoint.split('/')[1]}_{model_checkpoint.split('/')[-1]}_{dataset_name}_mean_pool.png")
