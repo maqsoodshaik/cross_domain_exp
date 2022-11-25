@@ -9,7 +9,7 @@ batch_size = 8
 dataset_name = "voxlingua"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['fr','de','nl']
+configs = ['fr','de','nl','es','pl','pt','it']
 list_datasets_train = []
 list_datasets_validation = []
 for val,i in enumerate(configs):   
@@ -77,8 +77,8 @@ def preprocess_function(examples):
 
 """To apply this function on all utterances in our dataset, we just use the `map` method of our `dataset` object we created earlier. This will apply the function on all the elements of all the splits in `dataset`, so our training, validation and testing data will be preprocessed in one single command."""
 
-encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=["audio","label"], batched=True)
-encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=["audio","label"], batched=True)
+encoded_dataset_train = dataset_train.map(preprocess_function, remove_columns=["audio","label"], batched=True,load_from_cache_file=False)
+encoded_dataset_validation = dataset_validation.map(preprocess_function, remove_columns=["audio","label"], batched=True,load_from_cache_file=False)
 
 # def transforms(examples):
 #     examples["label"] = [label2id_int[image] for image in examples["locale"]]

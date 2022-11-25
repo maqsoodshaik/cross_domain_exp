@@ -10,7 +10,7 @@ from scipy.io.wavfile import write
 dataset_name = "voxlingua"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['fr','de','nl']
+configs = ['fr','de','nl','es','pl','pt','it']
 list_datasets_train = []
 list_datasets_validation = []
 for val,i in enumerate(configs):   
