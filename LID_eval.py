@@ -1,10 +1,11 @@
 import torch
-model_checkpoint = "/pretrained/wav2vec2-basefrdenlvoxlingua_bestmodel"#"/pretrained/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"#"/wop/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
+model_checkpoint = "/wop/wav2vec2-basefrenchgermandutchspanishitalianportuguesepolishmultilingual_librispeech_bestmodel"#"/pretrained/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"#"/wop/wav2vec2-basefrenchgermandutchmultilingual_librispeech_bestmodel"
 batch_size = 16
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets,Dataset
 metric = load_metric("accuracy")
-labels =["French","German","Dutch"]
+metric_f1 = load_metric("f1")
+labels =["French","German","Dutch","Spanish","Italian","Portuguese","Polish"]
 label2id, id2label,label2id_int = dict(), dict(),dict()
 
 for i, label in enumerate(labels):
@@ -22,10 +23,10 @@ max_duration = 10.0  # seconds
 
 
 dataset_name_o = "multilingual_librispeech"
-configs_o = ['french', 'german', 'dutch']
+configs_o = ['french', 'german', 'dutch','spanish','italian','portuguese','polish']
 list_datasets_validation_o = []
 for val,i in enumerate(configs_o):   
-    dataset_validation = load_dataset("facebook/multilingual_librispeech",i,split = "train.1h")
+    dataset_validation = load_dataset("facebook/multilingual_librispeech",i,split = "test")
     dataset_validation = dataset_validation.add_column("labels",[val]*len(dataset_validation))
     list_datasets_validation_o.append(dataset_validation)
 dataset_validation_o = concatenate_datasets(
@@ -54,6 +55,10 @@ def compute_metrics(eval_pred):
     """Computes accuracy on a batch of predictions"""
     predictions = np.argmax(eval_pred.predictions, axis=1)
     return metric.compute(predictions=predictions, references=eval_pred.label_ids)
+def compute_metrics_f1(eval_pred):
+    """Computes accuracy on a batch of predictions"""
+    predictions = np.argmax(eval_pred.predictions, axis=1)
+    return metric_f1.compute(predictions=predictions, references=eval_pred.label_ids,average="weighted")
 
 import torch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -83,13 +88,20 @@ trainer = Trainer(
     tokenizer=feature_extractor,
     compute_metrics=compute_metrics
 )
+trainer_f1 = Trainer(
+    best_model,
+    args,
+    tokenizer=feature_extractor,
+    compute_metrics=compute_metrics_f1
+)
 # for batch in trainer.get_train_dataloader():
 #     break
 # from scipy.io.wavfile import write
 # write('output_sounddevice.wav', 16000, np.array(batch["input_values"][0]))
 # print(f"after loading model:{trainer.evaluate()}")
 pred_o= trainer.predict(encoded_dataset_validation_o)
-print(f"original_accuracy:{pred_o}")
+print(f"multilingual_accuracy:{pred_o}")
+print(f"Multilingual_f1:{trainer_f1.predict(encoded_dataset_validation_o)}")
 
 
 
@@ -102,8 +114,8 @@ datasets.config.DOWNLOADED_DATASETS_PATH = Path('/corpora/voxlingua/')
 
 
 ###fleaurs
-configs = ['fr','de','nl']
-labels_f =["French","German","Dutch"]
+# configs = ['fr','de','nl']
+labels_f =["French","German","Dutch","Spanish","Italian","Portuguese","Polish"]
 label2id_f, id2label_f,label2id_int_f = dict(), dict(),dict()
 
 for i, label in enumerate(labels_f):
@@ -111,12 +123,12 @@ for i, label in enumerate(labels_f):
     id2label_f[str(i)] = label
     label2id_int_f[label] = i
 dataset_name = "voxlingua"
-configs = ['fr','de','nl']
+configs = ['fr','de','nl','es','it','pt','pl']
 # configs = ['ru_ru','pl_pl','uk_ua']
 list_datasets_validation = []
 for index,i in enumerate(configs):   
     dataset_validation = load_dataset("/corpora/voxlingua/",data_dir=i,split = "test")
-    dataset_validation = Dataset.from_dict(dataset_validation[:20])
+    # dataset_validation = Dataset.from_dict(dataset_validation[:20])
     dataset_validation = dataset_validation.add_column("labels",[index]*len(dataset_validation))
     list_datasets_validation.append(dataset_validation)
 dataset_validation = concatenate_datasets(
@@ -138,23 +150,9 @@ def preprocess_function_f(examples):
 encoded_dataset_validation = dataset_validation.map(preprocess_function_f, remove_columns=["audio","label"], batched=True)
 pred= trainer.predict(encoded_dataset_validation)
 print(f"fleaurs_accuracy:{pred}")
-# inp_f = torch.tensor(encoded_dataset_validation["input_values"][::2]).to(device)
+print(f"fleaurs_f1:{trainer_f1.predict(encoded_dataset_validation)}")
 
-# labels_p_f = torch.tensor(encoded_dataset_validation["labels"][::2]).to(device)
-# out_domain = torch.tensor([10]*len(labels_p_f))
-# inp = torch.tensor(encoded_dataset_validation_o["input_values"][::2]).to(device) 
-# labels_p = torch.tensor(encoded_dataset_validation_o["labels"][::2]).to(device)
-# in_domain =  torch.tensor([1]*len(labels_p))
-
-# inp = torch.cat((inp, inp_f), 0)
-# labels_p = torch.cat((labels_p, labels_p_f), 0)
-# domain =  torch.cat((in_domain, out_domain), 0)
-
-
-
-# pred = best_model.to(device).wav2vec2(inp)
-
-# pred = pred.last_hidden_state.reshape(pred.last_hidden_state.shape[0],-1)
+#out of domain accuracy
 encoded_dataset_validation_o=encoded_dataset_validation_o.add_column("domain",[0]*len(encoded_dataset_validation_o))
 encoded_dataset_validation = encoded_dataset_validation.add_column("domain",[1]*len(encoded_dataset_validation))
 
