@@ -61,7 +61,7 @@ We will use the [🤗 Datasets](https://github.com/huggingface/datasets) library
 
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
-configs = ['fr_fr','de_de','nl_nl']
+configs = ['fr_fr','de_de','nl_nl','es_419','it_it','pt_br','pl_pl']
 list_datasets_train = []
 list_datasets_validation = []
 for i in configs:   
@@ -91,7 +91,7 @@ metric = load_metric("accuracy")
 
 """Let's create an `id2label` dictionary to decode them back to strings and see what they are. The inverse `label2id` will be useful too, when we load the model later."""
 
-labels = ["French","German","Dutch"]
+labels = ["French","German","Dutch","Spanish","Italian","Portuguese","Polish"]
 label2id, id2label,label2id_int = dict(), dict(),dict()
 for i, label in enumerate(labels):
     label2id[label] = str(i)
@@ -143,7 +143,7 @@ feature_extractor
 
 """As we've noticed earlier, the samples are roughly 1 second long, so let's set it here:"""
 
-max_duration = 5.0  # seconds
+max_duration = 10.0  # seconds
 
 """We can then write the function that will preprocess our samples. We just feed them to the `feature_extractor` with the argument `truncation=True`, as well as the maximum sample length. This will ensure that very long inputs like the ones in the `_silence_` class can be safely batched."""
 
@@ -154,6 +154,7 @@ def preprocess_function(examples):
         sampling_rate=feature_extractor.sampling_rate, 
         max_length=int(feature_extractor.sampling_rate * max_duration), 
         truncation=True, 
+        padding=True
     )
     inputs["labels"] = [label2id_int[image] for image in examples["language"]]
     return inputs
@@ -206,7 +207,7 @@ args = TrainingArguments(
     per_device_train_batch_size=batch_size,
     gradient_accumulation_steps=4,
     per_device_eval_batch_size=batch_size,
-    num_train_epochs=5,
+    num_train_epochs=10,
     warmup_ratio=0.1,
     logging_steps=10,
     load_best_model_at_end=True,
@@ -261,9 +262,9 @@ print(trainer.train())
 print(trainer.evaluate())
 
 """You can now upload the result of the training to the Hub, just execute this instruction:"""
-trainer.save_model( f"/pretrained/{model_name}_{dataset_name}_bestmodel")
+trainer.save_model( f"/pretrained/{model_name}_bestmodel")
 best_model = AutoModelForAudioClassification.from_pretrained(
-    f"/pretrained/{model_name}_{dataset_name}_bestmodel"
+    f"/pretrained/{model_name}_bestmodel"
 )
 trainer = Trainer(
     best_model,
