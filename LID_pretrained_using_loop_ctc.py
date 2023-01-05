@@ -236,9 +236,11 @@ class LinearRegression(torch.nn.Module):
     def __init__(self):
         super(LinearRegression, self).__init__()
         self.linear_1 = torch.nn.Linear(768, 256)
+        self.relu = torch.nn.ReLU()
         self.linear_2 = torch.nn.Linear(256, num_labels)
     def forward(self, x):
         out = self.linear_1(x)
+        out = self.relu(out)
         out = self.linear_2(out)
         return out
 linear = LinearRegression()
