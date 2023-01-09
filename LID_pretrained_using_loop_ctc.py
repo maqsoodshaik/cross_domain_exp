@@ -102,9 +102,9 @@ set_seed(42)
 wandb.init(project='out_of_domain_pretrained_self_supervised')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 config = wandb.config
-config.epochs = 50
+config.dataset_name ="multilingual_librispeech"
+config.epochs = 100
 config.batch_size = 2
-dataset_name = "multilingual_librispeech"
 from os import rename
 from datasets import load_dataset, load_metric,concatenate_datasets
 configs = ['french', 'german', 'dutch','spanish','italian','portuguese','polish']
@@ -226,7 +226,7 @@ Now that our data is ready, we can download the pretrained model and fine-tune i
 To instantiate a `Trainer`, we will need to define the training configuration and the evaluation metric. The most important is the [`TrainingArguments`](https://huggingface.co/transformers/main_classes/trainer.html#transformers.TrainingArguments), which is a class that contains all the attributes to customize the training. It requires one folder name, which will be used to save the checkpoints of the model, and all other arguments are optional:
 """
 model_name_extension = "".join(configs)
-model_name = model_checkpoint.split("/")[-1]+model_name_extension+dataset_name+"same_size"
+model_name = model_checkpoint.split("/")[-1]+model_name_extension+config.dataset_name+"same_size"
 
 # args = TrainingArguments(
 #     f"/pretrained/{model_name}",#{model_name}arnlpt
@@ -252,13 +252,9 @@ Next, we need to define a function for how to compute the metrics from the predi
 class LinearRegression(torch.nn.Module):
     def __init__(self):
         super(LinearRegression, self).__init__()
-        self.linear_1 = torch.nn.Linear(768, 256)
-        self.relu = torch.nn.ReLU()
-        self.linear_2 = torch.nn.Linear(256, num_labels)
+        self.linear_1 = torch.nn.Linear(768, num_labels)
     def forward(self, x):
         out = self.linear_1(x)
-        out = self.relu(out)
-        out = self.linear_2(out)
         return out
 linear = LinearRegression()
 
@@ -272,7 +268,8 @@ def compute_metrics(eval_pred):
 Now we can finetune our model by calling the `train` method:
 """
 from transformers import get_linear_schedule_with_warmup, AdamW
-optimizer = AdamW(ctc_model.parameters(), lr=3e-5)
+config.lr = 3e-5
+optimizer = AdamW(ctc_model.parameters(), lr=config.lr)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=len(train_dataloader)*config.epochs*0.1, num_training_steps=len(train_dataloader)*config.epochs)
 ctc_model = ctc_model.to(device)
 criterion = torch.nn.CrossEntropyLoss()
@@ -296,7 +293,7 @@ def eval_func(eval_dataloader, best_model):
     #log to wandb
     wandb.log({f"Accuracy on validation of": acc})
     wandb.log({f"Loss on validation of": loss})
-balance = 1
+config.balance = 10
 for epoch in range(1, config.epochs + 1):
     print(f"Epoch {epoch}")
     n_correct = 0
@@ -307,7 +304,7 @@ for epoch in range(1, config.epochs + 1):
         outputs = ctc_model(input_values = batch['input_values'],mask_time_indices = batch['mask_time_indices'],sampled_negative_indices = batch['sampled_negative_indices'])
         # outputs = ctc_model(batch["input_values"])
         out_logits = linear(outputs.hidden_states[-1])
-        loss = criterion(out_logits.mean(dim=1), batch["labels"])+balance*outputs.loss
+        loss = criterion(out_logits.mean(dim=1), batch["labels"])+config.balance*outputs.loss
         print(f"loss in batch {batch_iter+1} is {loss}")
         #log loss using wandb
         wandb.log({"loss":loss})
